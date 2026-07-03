@@ -3,379 +3,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MSFS Flight Log</title>
+    <title>Visor de PDFs - MSFS</title>
     <style>
-        /* --- ESTÉTICA DE AVIACIÓN / MODO OSCURO (GLASS COCKPIT) --- */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #0b0f19; /* Gris oscuro aeronáutico */
-            color: #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; height: 100vh; background-color: #f4f6f9; color: #333; overflow: hidden; }
+        
+        /* Menú Lateral */
+        #sidebar { width: 320px; background: #1e272e; color: #fff; padding: 20px; overflow-y: auto; height: 100vh; flex-shrink: 0; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        #sidebar h2 { font-size: 1.3rem; margin-bottom: 20px; border-bottom: 2px solid #34495e; padding-bottom: 10px; color: #05c46b; text-transform: uppercase; letter-spacing: 1px; }
+        .categoria { margin-bottom: 12px; background: #2d3748; border-radius: 6px; overflow: hidden; }
+        .categoria-titulo { font-weight: 600; cursor: pointer; color: #fff; padding: 12px 15px; display: block; transition: background 0.2s; user-select: none; }
+        .categoria-titulo:hover { background: #3f4e65; }
+        .lista-archivos { list-style: none; padding: 5px 0; display: none; background: #232c3d; border-top: 1px solid #1e272e; }
+        .lista-archivos.activo { display: block; }
+        .lista-archivos li { margin: 2px 0; }
+        .lista-archivos a { color: #dcdde1; text-decoration: none; font-size: 0.9rem; cursor: pointer; display: block; padding: 8px 20px; transition: all 0.2s; }
+        .lista-archivos a:hover { color: #05c46b; background: #1e272e; padding-left: 25px; }
 
-        /* --- BARRA SUPERIOR (CABECERA) --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 25px;
-            border-bottom: 1px solid #1e293b;
-            background-color: #0f172a; /* Color panel principal */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-        }
-        h1 {
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #38bdf8; /* Azul aviónica */
-            text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-        }
-        .search-container {
-            position: relative;
-        }
-        .search-input {
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            color: #f8fafc;
-            padding: 8px 12px;
-            padding-left: 36px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            outline: none;
-            width: 220px;
-            transition: all 0.25s ease;
-        }
-        .search-input:focus {
-            border-color: #00e5ff; /* Brillo radar */
-            width: 280px;
-            box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
-        }
-        .search-icon {
-            position: absolute;
-            left: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #64748b;
-            font-size: 0.85rem;
-        }
-
-        /* --- CONTENEDOR PRINCIPAL --- */
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* --- MENÚ LATERAL (CATEGORÍAS Y RUTAS) --- */
-        aside {
-            width: 320px;
-            border-right: 1px solid #1e293b;
-            background-color: #0f172a;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .zona-container {
-            margin-bottom: 12px;
-            background-color: #1e293b;
-            border-radius: 6px;
-            border: 1px solid #334155;
-            overflow: hidden;
-            transition: border-color 0.2s;
-        }
-        .zona-container:hover {
-            border-color: #475569;
-        }
-        .zona-header {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #94a3b8;
-            font-weight: 700;
-            padding: 12px 14px;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            user-select: none;
-            background-color: #131c2e;
-        }
-        .zona-header::after {
-            content: '▲';
-            font-size: 0.65rem;
-            color: #64748b;
-            transition: transform 0.2s ease;
-        }
-        .zona-container.collapsed .zona-header::after {
-            transform: rotate(180deg);
-        }
-        .rutas-list {
-            list-style: none;
-            padding: 6px;
-            display: block;
-            background-color: #1e293b;
-        }
-        .zona-container.collapsed .rutas-list {
-            display: none;
-        }
-        .ruta-item {
-            padding: 10px 12px;
-            margin: 2px 0;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-family: Consolas, Monaco, monospace; /* Toque técnico de coordenadas */
-            color: #cbd5e1;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .ruta-item:hover {
-            background-color: #273549;
-            color: #f8fafc;
-            padding-left: 16px;
-        }
-        .ruta-item.active {
-            background-color: #00e5ff; /* Color HUD activo */
-            color: #0b0f19;
-            font-weight: 700;
-            box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
-        }
-        .empty-message {
-            font-size: 0.8rem;
-            color: #64748b;
-            font-style: italic;
-            padding: 10px 12px;
-        }
-
-        /* --- PANEL DEL VISOR DE PDF --- */
-        main {
-            flex: 1;
-            background-color: #0b0f19;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            padding: 15px;
-        }
-        .pdf-viewer {
-            width: 100%;
-            height: 100%;
-            border: 1px solid #1e293b;
-            border-radius: 8px;
-            display: none;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-        .status-message {
-            color: #64748b;
-            font-size: 0.9rem;
-            text-align: center;
-            padding: 25px;
-            border: 1px dashed #1e293b;
-            border-radius: 8px;
-            background-color: #0f172a;
-            max-width: 400px;
-        }
-
-        /* --- RESPONSIVE PARA DISPOSITIVOS MÓVILES --- */
-        @media (max-width: 768px) {
-            .main-container {
-                flex-direction: column;
-            }
-            aside {
-                width: 100%;
-                height: 45vh;
-                border-right: none;
-                border-bottom: 1px solid #1e293b;
-            }
-            main {
-                height: 55vh;
-                padding: 5px;
-            }
-            .search-input:focus {
-                width: 200px;
-            }
-        }
+        /* Contenedor Principal (Visor) */
+        #viewer-container { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; background: #57606f; position: relative; }
+        iframe { width: 100%; height: 100%; border: none; background: #fff; }
+        .no-pdf { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; font-size: 1.2rem; color: #f5f6fa; text-align: center; padding: 20px; }
+        .no-pdf span { font-size: 3rem; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>MSFS Flight Log</h1>
-        <div class="search-container">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="search-box" class="search-input" placeholder="Buscar ruta (ej: LEMD)...">
+    <div id="sidebar">
+        <h2>Categorías MSFS</h2>
+        <div id="menu-contenido">Cargando carpetas...</div>
+    </div>
+
+    <div id="viewer-container">
+        <div id="placeholder" class="no-pdf">
+            <span>✈️</span>
+            Selecciona un archivo PDF del menú para visualizarlo aquí
         </div>
-    </header>
-
-    <div class="main-container">
-        
-        <aside id="sidebar">
-            <div class="status-message">Conectando con tu hangar en GitHub...</div>
-        </aside>
-
-        <main>
-            <div class="status-message" id="welcome-message">
-                Selecciona una ruta del menú para ver el plan de vuelo.
-            </div>
-            <iframe class="pdf-viewer" id="pdf-frame" src=""></iframe>
-        </main>
-
+        <iframe id="pdf-viewer" style="display: none;"></iframe>
     </div>
 
     <script>
-        const USERNAME = 'iagohp03';
-        const REPO = 'msfs';
-        const TOKEN = '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';
+        const USUARIO = "iagohp03";
+        const REPO = "msfs";
+        
+        const BASE_API_URL = `https://api.github.com/repos/${USUARIO}/${REPO}/contents`;
 
-        const sidebar = document.getElementById('sidebar');
-        const pdfFrame = document.getElementById('pdf-frame');
-        const welcomeMessage = document.getElementById('welcome-message');
-        const searchBox = document.getElementById('search-box');
-
-        let todoElHangar = {}; 
-
-        const headers = {
-            'Authorization': `Bearer ${TOKEN}`,
-            'Accept': 'application/vnd.github.v3+json'
-        };
-
-        async function cargarHangar() {
+        async function cargarMenu() {
             try {
-                const response = await fetch(`https://api.github.com/repos/${USERNAME}/${REPO}/contents`, { headers });
-                if (!response.ok) throw new Error('No se pudo acceder al repositorio');
-                
-                const elementos = await response.json();
-                const carpetas = elementos.filter(el => el.type === 'dir');
+                const respuesta = await fetch(BASE_API_URL);
+                const items = await respuesta.json();
+                const menuContenedor = document.getElementById('menu-contenido');
+                menuContenedor.innerHTML = '';
+
+                const carpetas = items.filter(item => item.type === 'dir');
 
                 if (carpetas.length === 0) {
-                    sidebar.innerHTML = '<div class="status-message">No se encontraron carpetas en tu repositorio.</div>';
+                    menuContenedor.innerHTML = 'No se encontraron carpetas en la raíz.';
                     return;
                 }
 
-                sidebar.innerHTML = ''; 
-
                 for (const carpeta of carpetas) {
-                    const resCarpeta = await fetch(carpeta.url, { headers });
-                    if (resCarpeta.ok) {
-                        const archivos = await resCarpeta.json();
-                        const pdfs = archivos.filter(arch => arch.name.toLowerCase().endsWith('.pdf'));
-                        todoElHangar[carpeta.name] = pdfs;
-                    }
+                    const catDiv = document.createElement('div');
+                    catDiv.className = 'categoria';
+
+                    const titulo = document.createElement('span');
+                    titulo.className = 'categoria-titulo';
+                    titulo.innerText = `📁 ${carpeta.name}`;
+                    
+                    const listaArchivos = document.createElement('ul');
+                    listaArchivos.className = 'lista-archivos';
+
+                    titulo.onclick = async () => {
+                        listaArchivos.classList.toggle('activo');
+                        
+                        if (listaArchivos.children.length === 0) {
+                            listaArchivos.innerHTML = '<li style="padding: 8px 20px; color: #aaa;">Cargando archivos...</li>';
+                            await cargarArchivosDeCarpeta(carpeta.path, listaArchivos);
+                        }
+                    };
+
+                    catDiv.appendChild(titulo);
+                    catDiv.appendChild(listaArchivos);
+                    menuContenedor.appendChild(catDiv);
                 }
-
-                renderizarInterfaz(todoElHangar, false);
-
             } catch (error) {
-                console.error(error);
-                sidebar.innerHTML = '<div class="status-message" style="color: #ef4444;">Error al conectar con GitHub. Revisa la consola (F12).</div>';
+                console.error("Error al cargar el repositorio:", error);
+                document.getElementById('menu-contenido').innerText = 'Error al conectar con GitHub.';
             }
         }
 
-        function renderizarInterfaz(datosMostrar, isSearching = false) {
-            sidebar.innerHTML = '';
-            
-            for (const [zona, pdfs] of Object.entries(datosMostrar)) {
-                const zonaContainer = document.createElement('div');
-                zonaContainer.className = 'zona-container';
-                
-                if (!isSearching) {
-                    zonaContainer.classList.add('collapsed');
-                }
+        async function cargarArchivosDeCarpeta(path, ulElement) {
+            try {
+                const respuesta = await fetch(`${BASE_API_URL}/${path}`);
+                const archivos = await respuesta.json();
+                ulElement.innerHTML = '';
 
-                const headerZona = document.createElement('div');
-                headerZona.className = 'zona-header';
-                headerZona.textContent = zona;
-                
-                headerZona.addEventListener('click', () => {
-                    zonaContainer.classList.toggle('collapsed');
-                });
-                
-                zonaContainer.appendChild(headerZona);
-
-                const listaUls = document.createElement('ul');
-                listaUls.className = 'rutas-list';
+                const pdfs = archivos.filter(archivo => archivo.type === 'file' && archivo.name.toLowerCase().endsWith('.pdf'));
 
                 if (pdfs.length === 0) {
-                    const itemVacio = document.createElement('li');
-                    itemVacio.className = 'empty-message';
-                    itemVacio.textContent = 'No hay rutas en esta zona';
-                    listaUls.appendChild(itemVacio);
-                } else {
-                    pdfs.forEach(pdf => {
-                        const itemLi = document.createElement('li');
-                        itemLi.className = 'ruta-item';
-                        itemLi.textContent = pdf.name.replace(/\.[^/.]+$/, ""); 
-                        
-                        itemLi.addEventListener('click', async (e) => {
-                            e.stopPropagation(); 
-                            document.querySelectorAll('.ruta-item').forEach(el => el.classList.remove('active'));
-                            itemLi.classList.add('active');
-                            
-                            welcomeMessage.style.display = 'block';
-                            welcomeMessage.textContent = 'Cargando plano de vuelo...';
-                            pdfFrame.style.display = 'none';
-
-                            try {
-                                const resBlob = await fetch(pdf.url, { headers });
-                                if (!resBlob.ok) throw new Error('Error al descargar el PDF');
-                                
-                                const datosJson = await resBlob.json();
-                                const respuestaContenido = await fetch(`data:application/pdf;base64,${datosJson.content}`);
-                                const blobPdf = await respuestaContenido.blob();
-                                
-                                const urlLocal = URL.createObjectURL(blobPdf);
-                                
-                                welcomeMessage.style.display = 'none';
-                                pdfFrame.style.display = 'block';
-                                pdfFrame.src = urlLocal;
-
-                            } catch (error) {
-                                console.error(error);
-                                welcomeMessage.textContent = 'Error al renderizar el PDF nativo.';
-                            }
-                        });
-
-                        listaUls.appendChild(itemLi);
-                    });
+                    ulElement.innerHTML = '<li style="padding: 8px 20px; color: #888; font-style: italic;">No hay PDFs en esta carpeta</li>';
+                    return;
                 }
 
-                zonaContainer.appendChild(listaUls);
-                sidebar.appendChild(zonaContainer);
+                pdfs.forEach(pdf => {
+                    const li = document.createElement('li');
+                    const link = document.createElement('a');
+                    link.innerText = `📄 ${pdf.name.replace(/\.[^/.]+$/, "")}`;
+                    
+                    const urlRaw = `https://raw.githubusercontent.com/${USUARIO}/${REPO}/main/${encodeURIComponent(pdf.path)}`;
+                    
+                    link.onclick = () => verPDF(urlRaw);
+
+                    li.appendChild(link);
+                    ulElement.appendChild(li);
+                });
+            } catch (error) {
+                ulElement.innerHTML = '<li style="padding: 8px 20px; color: #ff4d4d;">Error al cargar</li>';
             }
         }
 
-        // --- MOTOR DEL BUSCADOR ---
-        searchBox.addEventListener('input', (e) => {
-            const busqueda = e.target.value.toLowerCase().trim();
+        function verPDF(url) {
+            document.getElementById('placeholder').style.display = 'none';
+            const viewer = document.getElementById('pdf-viewer');
+            viewer.style.display = 'block';
+            
+            // Usamos el visor integrado de Google Docs para forzar la visualización online del PDF
+            viewer.src = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+        }
 
-            if (busqueda === '') {
-                renderizarInterfaz(todoElHangar, false);
-                return;
-            }
-
-            let hangarFiltrado = {};
-
-            for (const [zona, pdfs] of Object.entries(todoElHangar)) {
-                const pdfsFiltrados = pdfs.filter(pdf => pdf.name.toLowerCase().includes(busqueda));
-                if (pdfsFiltrados.length > 0) {
-                    hangarFiltrado[zona] = pdfsFiltrados;
-                }
-            }
-
-            renderizarInterfaz(hangarFiltrado, true);
-        });
-
-        cargarHangar();
+        cargarMenu();
     </script>
 </body>
 </html>
